@@ -9,6 +9,7 @@
 - 付箋の色をカスタマイズ
 - 付箋をドラッグして移動可能
 - アプリケーション終了後も付箋の状態を復元
+- 最小化時にタスクバーに表示
 
 ## 必要条件
 
@@ -20,9 +21,9 @@
 このリポジトリをクローンまたはダウンロードして使用できます。
 
 ```bash
-git clone https://github.com/あなたのユーザー名/python-sticky-notes.git
-cd python-sticky-notes
-python sticky_notes.py
+git clone https://github.com/ShunsukeTamura06/tkinter_app.git
+cd tkinter_app
+python main.py
 ```
 
 ## 使い方
@@ -37,8 +38,12 @@ python sticky_notes.py
 
 ## ファイル構成
 
-- `sticky_notes.py`: メインのアプリケーションコード
+- `main.py`: メインのアプリケーションコード
 - `sticky_notes.json`: 付箋データの保存ファイル（自動生成）
+
+## 更新履歴
+
+- 2025-03-18: READMEの修正、正確なリポジトリ情報を追加
 
 ## ライセンス
 
