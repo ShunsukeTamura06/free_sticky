@@ -6,17 +6,13 @@ from datetime import datetime
 import random
 
 class StickyNote(tk.Toplevel):
-    def __init__(self, master, note_id=None, text="", x=None, y=None, color="#FFFF99", show_title_bar=True):
+    def __init__(self, master, note_id=None, text="", x=None, y=None, color="#FFFF99"):
         super().__init__(master)
         self.master = master
         self.note_id = note_id or datetime.now().strftime("%Y%m%d%H%M%S")
         
-        # タイトルバーの表示/非表示の設定
-        self.show_title_bar = show_title_bar
-        if show_title_bar:
-            self.title(f"付箋 - {self.note_id}")
-        else:
-            self.overrideredirect(True)  # タイトルバーを非表示
+        # タイトルバーを非表示に統一
+        self.overrideredirect(True)
         
         # ウィンドウの設定
         self.geometry("200x200")
@@ -35,42 +31,34 @@ class StickyNote(tk.Toplevel):
             random_y = random.randint(50, screen_height - 250)
             self.geometry(f"+{random_x}+{random_y}")
         
-        # フレームの作成（タイトルバーが非表示の場合のコントロール用）
-        self.control_frame = tk.Frame(self, bg=color, height=20 if not show_title_bar else 0)
-        if not show_title_bar:
-            self.control_frame.pack(fill=tk.X, side=tk.TOP)
-            
-            # 閉じるボタン
-            self.close_button = tk.Label(self.control_frame, text="×", bg=color, 
-                                        fg="#555555", font=("Arial", 10, "bold"))
-            self.close_button.pack(side=tk.RIGHT, padx=5)
-            self.close_button.bind("<Button-1>", lambda e: self.on_close())
-            
-            # 設定ボタン
-            self.settings_button = tk.Label(self.control_frame, text="⚙", bg=color, 
-                                          fg="#555555", font=("Arial", 10, "bold"))
-            self.settings_button.pack(side=tk.RIGHT, padx=5)
-            self.settings_button.bind("<Button-1>", self.show_context_menu)
-            
-            # ドラッグ用のハンドル
-            self.drag_label = tk.Label(self.control_frame, text="≡", bg=color, 
-                                      fg="#555555", font=("Arial", 10, "bold"))
-            self.drag_label.pack(side=tk.LEFT, padx=5)
-            self.drag_label.bind("<Button-1>", self.start_drag)
-            self.drag_label.bind("<B1-Motion>", self.on_drag)
+        # コントロールフレーム（ヘッダー代わり）の作成
+        self.control_frame = tk.Frame(self, bg=color, height=20)
+        self.control_frame.pack(fill=tk.X, side=tk.TOP)
         
-        # メニューバーの設定（タイトルバー表示時のみ）
-        if show_title_bar:
-            self.menu_bar = tk.Menu(self)
-            self.config(menu=self.menu_bar)
-            
-            # 操作メニュー
-            self.action_menu = tk.Menu(self.menu_bar, tearoff=0)
-            self.menu_bar.add_cascade(label="操作", menu=self.action_menu)
-            self.action_menu.add_command(label="色の変更", command=self.change_color)
-            self.action_menu.add_command(label="タイトルバー表示切替", 
-                                       command=lambda: self.toggle_title_bar())
-            self.action_menu.add_command(label="閉じる", command=self.on_close)
+        # 閉じるボタン
+        self.close_button = tk.Label(self.control_frame, text="×", bg=color, 
+                                    fg="#555555", font=("Arial", 10, "bold"))
+        self.close_button.pack(side=tk.RIGHT, padx=5)
+        self.close_button.bind("<Button-1>", lambda e: self.on_close())
+        
+        # 設定ボタン
+        self.settings_button = tk.Label(self.control_frame, text="⚙", bg=color, 
+                                      fg="#555555", font=("Arial", 10, "bold"))
+        self.settings_button.pack(side=tk.RIGHT, padx=5)
+        self.settings_button.bind("<Button-1>", self.show_context_menu)
+        
+        # ドラッグ用のハンドル
+        self.drag_label = tk.Label(self.control_frame, text="≡", bg=color, 
+                                  fg="#555555", font=("Arial", 10, "bold"))
+        self.drag_label.pack(side=tk.LEFT, padx=5)
+        self.drag_label.bind("<Button-1>", self.start_drag)
+        self.drag_label.bind("<B1-Motion>", self.on_drag)
+        
+        # サイズ変更ハンドル（右下隅）
+        self.resize_frame = tk.Frame(self, bg=color, cursor="sizing")
+        self.resize_frame.place(relx=1.0, rely=1.0, anchor="se", width=15, height=15)
+        self.resize_frame.bind("<Button-1>", self.start_resize)
+        self.resize_frame.bind("<B1-Motion>", self.on_resize)
         
         # テキストエリアの設定
         self.text_area = tk.Text(self, wrap=tk.WORD, bg=color, relief=tk.FLAT, 
@@ -81,9 +69,13 @@ class StickyNote(tk.Toplevel):
         # コンテキストメニュー（右クリックメニュー）
         self.context_menu = tk.Menu(self, tearoff=0)
         self.context_menu.add_command(label="色の変更", command=self.change_color)
-        self.context_menu.add_command(label="タイトルバー表示切替", 
-                                    command=lambda: self.toggle_title_bar())
         self.context_menu.add_command(label="閉じる", command=self.on_close)
+        
+        # サイズ変更用の変数
+        self.resize_start_x = 0
+        self.resize_start_y = 0
+        self.resize_start_width = 0 
+        self.resize_start_height = 0
         
         # イベントバインド
         self.bind("<FocusOut>", self.save_on_focus_out)
@@ -91,16 +83,26 @@ class StickyNote(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.text_area.bind("<Button-3>", self.show_context_menu)  # 右クリック
         
-        # タイトルバー表示時のドラッグ設定
-        if show_title_bar:
-            self.bind("<Button-1>", self.start_drag)
-            self.bind("<B1-Motion>", self.on_drag)
-        else:
-            # タイトルバー非表示時はテキストエリアでのドラッグを無効化（テキスト編集のため）
-            self.text_area.bind("<Button-1>", lambda e: self.text_area.focus_set())
+        # テキストエリアでのドラッグを無効化（テキスト編集のため）
+        self.text_area.bind("<Button-1>", lambda e: self.text_area.focus_set())
         
         self.drag_start_x = 0
         self.drag_start_y = 0
+        
+    def start_resize(self, event):
+        """ウィンドウのリサイズ開始"""
+        self.resize_start_x = event.x_root
+        self.resize_start_y = event.y_root
+        self.resize_start_width = self.winfo_width()
+        self.resize_start_height = self.winfo_height()
+    
+    def on_resize(self, event):
+        """ウィンドウのリサイズ処理"""
+        # 最小サイズを確保
+        new_width = max(100, self.resize_start_width + (event.x_root - self.resize_start_x))
+        new_height = max(100, self.resize_start_height + (event.y_root - self.resize_start_y))
+        
+        self.geometry(f"{new_width}x{new_height}")
 
     def show_context_menu(self, event=None):
         try:
@@ -122,38 +124,16 @@ class StickyNote(tk.Toplevel):
         if color:
             self.config(bg=color)
             self.text_area.config(bg=color)
-            if not self.show_title_bar:
-                self.control_frame.config(bg=color)
-                self.close_button.config(bg=color)
-                self.settings_button.config(bg=color)
-                self.drag_label.config(bg=color)
+            self.control_frame.config(bg=color)
+            self.close_button.config(bg=color)
+            self.settings_button.config(bg=color)
+            self.drag_label.config(bg=color)
+            self.resize_frame.config(bg=color)
             self.save_note()
             # 選択されている場合、リスト表示も更新
             self.master.update_note_in_list(self.note_id)
 
-    def toggle_title_bar(self):
-        # 現在の状態を保存
-        current_position = (self.winfo_x(), self.winfo_y())
-        current_size = (self.winfo_width(), self.winfo_height())
-        current_text = self.text_area.get("1.0", tk.END)
-        current_color = self.cget("bg")
-        
-        # ノートを一旦閉じて新しい設定で再作成
-        self.destroy()
-        
-        # マスターアプリで新しいノートを作成
-        new_note = self.master.create_new_note({
-            "id": self.note_id,
-            "text": current_text,
-            "x": current_position[0],
-            "y": current_position[1],
-            "color": current_color,
-            "show_title_bar": not self.show_title_bar
-        })
-        
-        # サイズを復元
-        new_note.geometry(f"{current_size[0]}x{current_size[1]}+{current_position[0]}+{current_position[1]}")
-        self.master.save_notes()
+    # toggle_title_bar メソッドを削除（ヘッダーなしに統一したため）
 
     def get_note_data(self):
         return {
@@ -161,8 +141,9 @@ class StickyNote(tk.Toplevel):
             "text": self.text_area.get("1.0", tk.END).strip(),
             "x": self.winfo_x(),
             "y": self.winfo_y(),
+            "width": self.winfo_width(),
+            "height": self.winfo_height(),
             "color": self.cget("bg"),
-            "show_title_bar": self.show_title_bar,
             "is_open": True  # 付箋が開いている状態を記録
         }
 
@@ -192,6 +173,9 @@ class StickyNoteApp(tk.Tk):
         self.geometry("600x500")
         self.configure(bg="#f0f0f0")
         
+        # タイトルバーを非表示（ヘッダーなしに統一）
+        self.overrideredirect(True)
+        
         # アイコン設定（リソースがあれば）
         try:
             self.iconbitmap("sticky_note_icon.ico")
@@ -218,13 +202,30 @@ class StickyNoteApp(tk.Tk):
                            font=('Yu Gothic UI', 10),
                            padding=[10, 4])
         
-        # ヘッダーフレーム
-        header_frame = tk.Frame(self, bg="#4a86e8", height=40)
+        # ヘッダーフレーム（タイトルバー代わり）
+        header_frame = tk.Frame(self, bg="#4a86e8", height=30)
         header_frame.pack(fill=tk.X, side=tk.TOP)
         
-        header_label = tk.Label(header_frame, text="付箋管理アプリ", font=("Yu Gothic UI", 14, "bold"), 
+        # タイトル
+        header_label = tk.Label(header_frame, text="付箋管理アプリ", font=("Yu Gothic UI", 12, "bold"), 
                               bg="#4a86e8", fg="white")
         header_label.pack(side=tk.LEFT, padx=10, pady=5)
+        
+        # ドラッグ用のバインド
+        header_frame.bind("<Button-1>", self.start_move)
+        header_frame.bind("<B1-Motion>", self.on_move)
+        
+        # 閉じるボタン
+        close_button = tk.Label(header_frame, text="×", bg="#4a86e8", fg="white", 
+                             font=("Arial", 12, "bold"))
+        close_button.pack(side=tk.RIGHT, padx=10)
+        close_button.bind("<Button-1>", lambda e: self.on_exit())
+        
+        # 最小化ボタン
+        minimize_button = tk.Label(header_frame, text="_", bg="#4a86e8", fg="white", 
+                               font=("Arial", 12, "bold"))
+        minimize_button.pack(side=tk.RIGHT, padx=5)
+        minimize_button.bind("<Button-1>", lambda e: self.iconify())
         
         # 設定
         self.notes = []  # 開いている付箋のリスト
@@ -254,9 +255,6 @@ class StickyNoteApp(tk.Tk):
         # 付箋リストのツールバーボタン
         self.new_button = ttk.Button(toolbar_frame, text="新規作成", command=self.create_new_note)
         self.new_button.pack(side=tk.LEFT, padx=2)
-        
-        self.edit_button = ttk.Button(toolbar_frame, text="編集", command=self.edit_selected_note)
-        self.edit_button.pack(side=tk.LEFT, padx=2)
         
         self.open_button = ttk.Button(toolbar_frame, text="開く", command=self.open_selected_note)
         self.open_button.pack(side=tk.LEFT, padx=2)
@@ -338,7 +336,6 @@ class StickyNoteApp(tk.Tk):
         # コンテキストメニュー
         self.context_menu = tk.Menu(self.tree, tearoff=0)
         self.context_menu.add_command(label="開く", command=self.open_selected_note)
-        self.context_menu.add_command(label="編集", command=self.edit_selected_note)
         self.context_menu.add_command(label="色変更", command=self.change_selected_note_color)
         self.context_menu.add_separator()
         self.context_menu.add_command(label="削除", command=self.delete_selected_note)
@@ -420,9 +417,11 @@ class StickyNoteApp(tk.Tk):
                 else:
                     date_display = date_str
                 
-                # テキストプレビュー
+                # テキストプレビュー（1行に制限）
                 text = note.get("text", "").strip()
-                preview = (text[:30] + "...") if len(text) > 30 else text
+                # 改行を削除して1行に
+                text = text.replace("\n", " ").replace("\r", " ")
+                preview = (text[:50] + "...") if len(text) > 50 else text
                 if not preview:
                     preview = "(内容なし)"
                 
@@ -440,9 +439,12 @@ class StickyNoteApp(tk.Tk):
                 text=note_data.get("text", ""),
                 x=note_data.get("x"),
                 y=note_data.get("y"),
-                color=note_data.get("color", "#FFFF99"),
-                show_title_bar=note_data.get("show_title_bar", True)
+                color=note_data.get("color", "#FFFF99")
             )
+            
+            # サイズを設定（保存されていればそのサイズを復元）
+            if "width" in note_data and "height" in note_data:
+                note.geometry(f"{note_data['width']}x{note_data['height']}")
             
             # 新規ウィンドウか既存のウィンドウかを判断
             is_new = True
@@ -483,6 +485,7 @@ class StickyNoteApp(tk.Tk):
             if note.winfo_exists() and note.note_id == note_id:
                 note.focus_force()  # 既に開いている場合はフォーカスを当てる
                 note.lift()         # 最前面に表示
+                note.text_area.focus_set()  # 編集モードにする
                 return
         
         # 選択した付箋のデータを取得
@@ -495,25 +498,12 @@ class StickyNoteApp(tk.Tk):
                 break
         
         if note_data:
-            self.create_new_note(note_data)
+            new_note = self.create_new_note(note_data)
+            new_note.text_area.focus_set()  # 編集モードにする
         else:
             messagebox.showerror("エラー", "付箋データの取得に失敗しました。")
 
-    def edit_selected_note(self):
-        # 選択した付箋を開いて編集状態にする
-        self.open_selected_note()
-        
-        # 選択中の付箋を特定
-        selected = self.tree.selection()
-        if selected:
-            item_id = selected[0]
-            note_id = self.tree.item(item_id, "values")[0]
-            
-            # 対応する付箋ウィンドウを探してフォーカスを設定
-            for note in self.notes:
-                if note.winfo_exists() and note.note_id == note_id:
-                    note.text_area.focus_set()
-                    break
+    # edit_selected_note メソッドを削除（open_selected_note に統合）
 
     def delete_selected_note(self):
         selected = self.tree.selection()
@@ -683,6 +673,19 @@ class StickyNoteApp(tk.Tk):
             messagebox.showerror("エラー", f"ノートの保存中にエラーが発生しました: {e}")
             self.status_var.set("ノートの保存に失敗しました")
 
+    def start_move(self, event):
+        """ウィンドウ移動開始"""
+        self.x = event.x
+        self.y = event.y
+
+    def on_move(self, event):
+        """ウィンドウ移動処理"""
+        deltax = event.x - self.x
+        deltay = event.y - self.y
+        x = self.winfo_x() + deltax
+        y = self.winfo_y() + deltay
+        self.geometry(f"+{x}+{y}")
+    
     def on_exit(self):
         self.save_notes()
         self.destroy()
