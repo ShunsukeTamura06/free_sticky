@@ -4,9 +4,35 @@ import json
 import os
 from datetime import datetime
 import random
+from typing import List, Dict, Optional, Union, Tuple, Any, Callable, Set, cast
+
 
 class StickyNote(tk.Toplevel):
-    def __init__(self, master, note_id=None, text="", x=None, y=None, color="#FFFF99"):
+    """
+    付箋ウィンドウクラス。
+    テキストの入力、保存、色の変更、サイズ変更などの機能を提供します。
+    """
+    
+    def __init__(
+        self, 
+        master: 'StickyNoteApp', 
+        note_id: Optional[str] = None, 
+        text: str = "", 
+        x: Optional[int] = None, 
+        y: Optional[int] = None, 
+        color: str = "#FFFF99"
+    ) -> None:
+        """
+        付箋ウィンドウを初期化します。
+        
+        Args:
+            master: 親アプリケーション
+            note_id: 付箋のID (未指定の場合は現在時刻から自動生成)
+            text: 付箋のテキスト内容
+            x: ウィンドウのX座標
+            y: ウィンドウのY座標
+            color: 付箋の背景色
+        """
         super().__init__(master)
         self.master = master
         self.note_id = note_id or datetime.now().strftime("%Y%m%d%H%M%S")
@@ -89,37 +115,74 @@ class StickyNote(tk.Toplevel):
         self.drag_start_x = 0
         self.drag_start_y = 0
         
-    def start_resize(self, event):
-        """ウィンドウのリサイズ開始"""
+    def start_resize(self, event: tk.Event) -> None:
+        """
+        ウィンドウのリサイズ開始処理
+        
+        Args:
+            event: イベントオブジェクト（マウスクリック位置）
+        """
         self.resize_start_x = event.x_root
         self.resize_start_y = event.y_root
         self.resize_start_width = self.winfo_width()
         self.resize_start_height = self.winfo_height()
     
-    def on_resize(self, event):
-        """ウィンドウのリサイズ処理"""
+    def on_resize(self, event: tk.Event) -> None:
+        """
+        ウィンドウのリサイズ処理
+        
+        Args:
+            event: イベントオブジェクト（マウスドラッグ位置）
+        """
         # 最小サイズを確保
         new_width = max(100, self.resize_start_width + (event.x_root - self.resize_start_x))
         new_height = max(100, self.resize_start_height + (event.y_root - self.resize_start_y))
         
         self.geometry(f"{new_width}x{new_height}")
 
-    def show_context_menu(self, event=None):
+    def show_context_menu(self, event: Optional[tk.Event] = None) -> None:
+        """
+        コンテキストメニュー（右クリックメニュー）を表示
+        
+        Args:
+            event: イベントオブジェクト（右クリック位置）
+        """
         try:
-            self.context_menu.tk_popup(event.x_root, event.y_root)
+            if event:
+                self.context_menu.tk_popup(event.x_root, event.y_root)
+            else:
+                x = self.settings_button.winfo_rootx()
+                y = self.settings_button.winfo_rooty() + self.settings_button.winfo_height()
+                self.context_menu.tk_popup(x, y)
         finally:
             self.context_menu.grab_release()
 
-    def start_drag(self, event):
+    def start_drag(self, event: tk.Event) -> None:
+        """
+        ウィンドウドラッグの開始処理
+        
+        Args:
+            event: イベントオブジェクト（マウスクリック位置）
+        """
         self.drag_start_x = event.x
         self.drag_start_y = event.y
 
-    def on_drag(self, event):
+    def on_drag(self, event: tk.Event) -> None:
+        """
+        ウィンドウドラッグ移動処理
+        
+        Args:
+            event: イベントオブジェクト（マウスドラッグ位置）
+        """
         x = self.winfo_x() + (event.x - self.drag_start_x)
         y = self.winfo_y() + (event.y - self.drag_start_y)
         self.geometry(f"+{x}+{y}")
 
-    def change_color(self):
+    def change_color(self) -> None:
+        """
+        付箋の色を変更する
+        ユーザーが色選択ダイアログで色を選択すると、付箋の全ての要素の色が更新される
+        """
         color = colorchooser.askcolor(initialcolor=self.cget("bg"))[1]
         if color:
             self.config(bg=color)
@@ -133,9 +196,13 @@ class StickyNote(tk.Toplevel):
             # 選択されている場合、リスト表示も更新
             self.master.update_note_in_list(self.note_id)
 
-    # toggle_title_bar メソッドを削除（ヘッダーなしに統一したため）
-
-    def get_note_data(self):
+    def get_note_data(self) -> Dict[str, Any]:
+        """
+        付箋のデータを取得する
+        
+        Returns:
+            Dict[str, Any]: 付箋のID、テキスト、位置、サイズ、色などのデータ
+        """
         return {
             "id": self.note_id,
             "text": self.text_area.get("1.0", tk.END).strip(),
@@ -147,16 +214,35 @@ class StickyNote(tk.Toplevel):
             "is_open": True  # 付箋が開いている状態を記録
         }
 
-    def save_on_focus_out(self, event=None):
+    def save_on_focus_out(self, event: Optional[tk.Event] = None) -> None:
+        """
+        フォーカスが外れたときに付箋を保存する
+        
+        Args:
+            event: イベントオブジェクト（未使用だが、イベントバインドに必要）
+        """
         self.save_note()
 
-    def save_note(self, event=None):
+    def save_note(self, event: Optional[tk.Event] = None) -> str:
+        """
+        付箋の内容を保存する
+        
+        Args:
+            event: イベントオブジェクト（未使用だが、イベントバインドに必要）
+            
+        Returns:
+            str: "break"を返してイベントの伝播を停止する
+        """
         self.master.save_notes()
         # マスターのリストビューを更新
         self.master.update_note_in_list(self.note_id)
         return "break"  # イベントの伝播を停止
 
-    def on_close(self):
+    def on_close(self) -> None:
+        """
+        付箋を閉じる処理
+        閉じる前に内容を保存し、付箋のステータスを「閉じている」に更新する
+        """
         # 付箋を閉じる（削除ではなく）
         self.save_note()
         # リストビューの状態を更新
@@ -167,14 +253,19 @@ class StickyNote(tk.Toplevel):
 
 
 class StickyNoteApp(tk.Tk):
-    def __init__(self):
+    """
+    付箋管理アプリケーション
+    付箋の作成、管理、一覧表示などの機能を提供する
+    """
+    
+    def __init__(self) -> None:
+        """
+        付箋管理アプリケーションを初期化する
+        """
         super().__init__()
         self.title("付箋管理アプリ")
         self.geometry("600x500")
         self.configure(bg="#f0f0f0")
-        
-        # タイトルバーを非表示（ヘッダーなしに統一）
-        self.overrideredirect(True)
         
         # アイコン設定（リソースがあれば）
         try:
@@ -202,35 +293,10 @@ class StickyNoteApp(tk.Tk):
                            font=('Yu Gothic UI', 10),
                            padding=[10, 4])
         
-        # ヘッダーフレーム（タイトルバー代わり）
-        header_frame = tk.Frame(self, bg="#4a86e8", height=30)
-        header_frame.pack(fill=tk.X, side=tk.TOP)
-        
-        # タイトル
-        header_label = tk.Label(header_frame, text="付箋管理アプリ", font=("Yu Gothic UI", 12, "bold"), 
-                              bg="#4a86e8", fg="white")
-        header_label.pack(side=tk.LEFT, padx=10, pady=5)
-        
-        # ドラッグ用のバインド
-        header_frame.bind("<Button-1>", self.start_move)
-        header_frame.bind("<B1-Motion>", self.on_move)
-        
-        # 閉じるボタン
-        close_button = tk.Label(header_frame, text="×", bg="#4a86e8", fg="white", 
-                             font=("Arial", 12, "bold"))
-        close_button.pack(side=tk.RIGHT, padx=10)
-        close_button.bind("<Button-1>", lambda e: self.on_exit())
-        
-        # 最小化ボタン
-        minimize_button = tk.Label(header_frame, text="_", bg="#4a86e8", fg="white", 
-                               font=("Arial", 12, "bold"))
-        minimize_button.pack(side=tk.RIGHT, padx=5)
-        minimize_button.bind("<Button-1>", lambda e: self.iconify())
-        
         # 設定
-        self.notes = []  # 開いている付箋のリスト
-        self.all_notes = []  # すべての付箋データ
-        self.notes_file = "sticky_notes.json"
+        self.notes: List[StickyNote] = []  # 開いている付箋のリスト
+        self.all_notes: List[Dict[str, Any]] = []  # すべての付箋データ
+        self.notes_file: str = "sticky_notes.json"
         
         # メインフレーム（上下分割）
         self.paned_window = ttk.PanedWindow(self, orient=tk.VERTICAL)
@@ -353,7 +419,13 @@ class StickyNoteApp(tk.Tk):
         # 終了時の処理
         self.protocol("WM_DELETE_WINDOW", self.on_exit)
 
-    def show_tree_context_menu(self, event):
+    def show_tree_context_menu(self, event: tk.Event) -> None:
+        """
+        ツリービューで右クリックしたときのコンテキストメニューを表示
+        
+        Args:
+            event: イベントオブジェクト（右クリック位置）
+        """
         # 右クリックした項目を選択
         item = self.tree.identify_row(event.y)
         if item:
@@ -363,7 +435,13 @@ class StickyNoteApp(tk.Tk):
             finally:
                 self.context_menu.grab_release()
 
-    def update_preview(self, event=None):
+    def update_preview(self, event: Optional[tk.Event] = None) -> None:
+        """
+        選択した付箋のプレビューを更新
+        
+        Args:
+            event: イベントオブジェクト（未使用だが、イベントバインドに必要）
+        """
         selected = self.tree.selection()
         if selected:
             item_id = selected[0]
@@ -393,7 +471,10 @@ class StickyNoteApp(tk.Tk):
             self.preview_text.delete("1.0", tk.END)
             self.preview_text.config(state="disabled", bg="white")
 
-    def filter_notes(self):
+    def filter_notes(self) -> None:
+        """
+        検索条件に基づいて付箋リストをフィルタリングして表示
+        """
         # 検索条件でフィルタリング
         search_text = self.search_var.get().lower()
         
@@ -431,7 +512,16 @@ class StickyNoteApp(tk.Tk):
                 # ツリービューに追加
                 self.tree.insert("", "end", values=(note["id"], date_display, preview, status))
 
-    def create_new_note(self, note_data=None):
+    def create_new_note(self, note_data: Optional[Dict[str, Any]] = None) -> StickyNote:
+        """
+        新しい付箋を作成する
+        
+        Args:
+            note_data: 既存の付箋データ（指定がなければ新規作成）
+            
+        Returns:
+            StickyNote: 作成された付箋オブジェクト
+        """
         if isinstance(note_data, dict):
             note = StickyNote(
                 self,
@@ -471,7 +561,11 @@ class StickyNoteApp(tk.Tk):
         
         return note
 
-    def open_selected_note(self):
+    def open_selected_note(self) -> None:
+        """
+        リストで選択した付箋を開く
+        既に開いている場合はフォーカスを当てる
+        """
         selected = self.tree.selection()
         if not selected:
             messagebox.showinfo("情報", "開く付箋を選択してください。")
@@ -486,6 +580,7 @@ class StickyNoteApp(tk.Tk):
                 note.focus_force()  # 既に開いている場合はフォーカスを当てる
                 note.lift()         # 最前面に表示
                 note.text_area.focus_set()  # 編集モードにする
+                self.status_var.set(f"付箋を編集中（ID: {note_id}）")
                 return
         
         # 選択した付箋のデータを取得
@@ -503,9 +598,10 @@ class StickyNoteApp(tk.Tk):
         else:
             messagebox.showerror("エラー", "付箋データの取得に失敗しました。")
 
-    # edit_selected_note メソッドを削除（open_selected_note に統合）
-
-    def delete_selected_note(self):
+    def delete_selected_note(self) -> None:
+        """
+        リストで選択した付箋を削除する
+        """
         selected = self.tree.selection()
         if not selected:
             messagebox.showinfo("情報", "削除する付箋を選択してください。")
@@ -534,7 +630,10 @@ class StickyNoteApp(tk.Tk):
         self.refresh_note_list()
         self.status_var.set(f"付箋を削除しました（ID: {note_id}）")
 
-    def change_selected_note_color(self):
+    def change_selected_note_color(self) -> None:
+        """
+        リストで選択した付箋の色を変更する
+        """
         selected = self.tree.selection()
         if not selected:
             messagebox.showinfo("情報", "色を変更する付箋を選択してください。")
@@ -545,6 +644,7 @@ class StickyNoteApp(tk.Tk):
         
         # 選択した付箋のデータを取得
         note_data = None
+        note_index = -1
         for i, note in enumerate(self.all_notes):
             if note["id"] == note_id:
                 note_data = note
@@ -571,11 +671,11 @@ class StickyNoteApp(tk.Tk):
             if note.winfo_exists() and note.note_id == note_id:
                 note.config(bg=color)
                 note.text_area.config(bg=color)
-                if not note.show_title_bar:
-                    note.control_frame.config(bg=color)
-                    note.close_button.config(bg=color)
-                    note.settings_button.config(bg=color)
-                    note.drag_label.config(bg=color)
+                note.control_frame.config(bg=color)
+                note.close_button.config(bg=color)
+                note.settings_button.config(bg=color)
+                note.drag_label.config(bg=color)
+                note.resize_frame.config(bg=color)
         
         # 保存して表示を更新
         self.save_notes()
@@ -583,8 +683,13 @@ class StickyNoteApp(tk.Tk):
         self.update_preview()
         self.status_var.set(f"付箋の色を変更しました（ID: {note_id}）")
 
-    def update_note_in_list(self, note_id):
-        """特定の付箋のデータを更新"""
+    def update_note_in_list(self, note_id: str) -> None:
+        """
+        特定の付箋のデータをリストで更新する
+        
+        Args:
+            note_id: 更新する付箋のID
+        """
         # 開いている付箋のデータを取得
         updated_data = None
         for note in self.notes:
@@ -605,8 +710,13 @@ class StickyNoteApp(tk.Tk):
         self.refresh_note_list()
         self.update_preview()
 
-    def update_closed_note(self, note_data):
-        """閉じられた付箋のデータを更新"""
+    def update_closed_note(self, note_data: Dict[str, Any]) -> None:
+        """
+        閉じられた付箋のデータを更新する
+        
+        Args:
+            note_data: 付箋データ
+        """
         note_id = note_data["id"]
         
         # データリストの対応する付箋を更新
@@ -618,13 +728,15 @@ class StickyNoteApp(tk.Tk):
         # 表示を更新
         self.refresh_note_list()
 
-    def refresh_note_list(self):
-        """付箋リストを更新"""
+    def refresh_note_list(self) -> None:
+        """
+        付箋リストを最新の状態に更新する
+        """
         # 開いている付箋の状態を更新
-        open_note_ids = []
+        open_note_ids: Set[str] = set()
         for note in self.notes:
             if note.winfo_exists():
-                open_note_ids.append(note.note_id)
+                open_note_ids.add(note.note_id)
                 
                 # データに反映
                 for i, note_data in enumerate(self.all_notes):
@@ -640,7 +752,10 @@ class StickyNoteApp(tk.Tk):
         # リスト表示を更新
         self.filter_notes()
 
-    def load_notes(self):
+    def load_notes(self) -> None:
+        """
+        保存された付箋データを読み込む
+        """
         if os.path.exists(self.notes_file):
             try:
                 with open(self.notes_file, "r", encoding="utf-8") as f:
@@ -661,7 +776,10 @@ class StickyNoteApp(tk.Tk):
         else:
             self.status_var.set("新規データファイルを作成します")
 
-    def save_notes(self):
+    def save_notes(self) -> None:
+        """
+        付箋データをJSONファイルに保存する
+        """
         # 開いている付箋の状態を更新
         self.refresh_note_list()
         
@@ -673,20 +791,11 @@ class StickyNoteApp(tk.Tk):
             messagebox.showerror("エラー", f"ノートの保存中にエラーが発生しました: {e}")
             self.status_var.set("ノートの保存に失敗しました")
 
-    def start_move(self, event):
-        """ウィンドウ移動開始"""
-        self.x = event.x
-        self.y = event.y
-
-    def on_move(self, event):
-        """ウィンドウ移動処理"""
-        deltax = event.x - self.x
-        deltay = event.y - self.y
-        x = self.winfo_x() + deltax
-        y = self.winfo_y() + deltay
-        self.geometry(f"+{x}+{y}")
-    
-    def on_exit(self):
+    def on_exit(self) -> None:
+        """
+        アプリケーション終了時の処理
+        付箋データを保存してからアプリを終了する
+        """
         self.save_notes()
         self.destroy()
 
