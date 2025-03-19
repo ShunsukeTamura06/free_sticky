@@ -211,7 +211,8 @@ class StickyNote(tk.Toplevel):
             "width": self.winfo_width(),
             "height": self.winfo_height(),
             "color": self.cget("bg"),
-            "is_open": True  # 付箋が開いている状態を記録
+            "is_open": True,  # 付箋が開いている状態を記録
+            "was_open": True  # この付箋が一度でも開かれていたことを記録
         }
 
     def save_on_focus_out(self, event: Optional[tk.Event] = None) -> None:
@@ -248,6 +249,7 @@ class StickyNote(tk.Toplevel):
         # リストビューの状態を更新
         note_data = self.get_note_data()
         note_data["is_open"] = False
+        note_data["was_open"] = True  # 前回開いていた付箋としてマーク
         self.master.update_closed_note(note_data)
         self.destroy()
 
@@ -360,14 +362,14 @@ class StickyNoteApp(tk.Tk):
                               show="headings", selectmode="browse")
         
         # カラム設定
-        self.tree.heading("id", text="ID")
+        self.tree.heading("id", text="ID")  # 内部処理用に維持
         self.tree.heading("date", text="日時")
         self.tree.heading("preview", text="内容")
         self.tree.heading("status", text="状態")
         
-        self.tree.column("id", width=80, anchor="w")
+        self.tree.column("id", width=0, minwidth=0, stretch=tk.NO)  # IDは幅0で非表示
         self.tree.column("date", width=140, anchor="w")
-        self.tree.column("preview", width=250, anchor="w")
+        self.tree.column("preview", width=350, anchor="w", stretch=tk.YES)  # 横幅を広げて表示領域を確保
         self.tree.column("status", width=80, anchor="center")
         
         # スクロールバー
@@ -502,7 +504,7 @@ class StickyNoteApp(tk.Tk):
                 text = note.get("text", "").strip()
                 # 改行を削除して1行に
                 text = text.replace("\n", " ").replace("\r", " ")
-                preview = (text[:50] + "...") if len(text) > 50 else text
+                preview = (text[:80] + "...") if len(text) > 80 else text
                 if not preview:
                     preview = "(内容なし)"
                 
@@ -764,8 +766,8 @@ class StickyNoteApp(tk.Tk):
                 # リスト表示を更新
                 self.refresh_note_list()
                 
-                # 前回開いていた付箋を再表示
-                open_notes = [note for note in self.all_notes if note.get("is_open", False)]
+                # 前回開いていた付箋を再表示（前回のセッションで開いていたか、明示的に閉じたものでも前回開いていたことがあるもの）
+                open_notes = [note for note in self.all_notes if note.get("is_open", False) or note.get("was_open", False)]
                 for note_data in open_notes:
                     self.create_new_note(note_data)
                 
@@ -796,6 +798,14 @@ class StickyNoteApp(tk.Tk):
         アプリケーション終了時の処理
         付箋データを保存してからアプリを終了する
         """
+        # 開いている付箋を「前回開いていた付箋」としてマーク
+        for note in self.notes:
+            if note.winfo_exists():
+                for i, note_data in enumerate(self.all_notes):
+                    if note_data["id"] == note.note_id:
+                        self.all_notes[i]["was_open"] = True
+                        break
+        
         self.save_notes()
         self.destroy()
 
