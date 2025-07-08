@@ -13,14 +13,19 @@ from utils.constants import (
 class NoteController:
     """付箋のビジネスロジックを管理するコントローラー"""
     
-    def __init__(self, storage_service: StorageService):
+    def __init__(self, storage_service: StorageService, main_window=None):
         self.storage_service = storage_service
+        self.main_window = main_window  # メインウィンドウの参照を保持
         self.open_windows: Dict[str, StickyNoteWindow] = {}
         self.all_notes: List[NoteData] = []
         
         # コールバック
         self.on_notes_changed: Optional[Callable[[List[NoteData]], None]] = None
         self.on_status_update: Optional[Callable[[str], None]] = None
+    
+    def set_main_window(self, main_window) -> None:
+        """メインウィンドウを設定"""
+        self.main_window = main_window
     
     def initialize(self) -> None:
         """コントローラーを初期化"""
@@ -172,7 +177,7 @@ class NoteController:
     
     def _create_note_window(self, note: NoteData) -> StickyNoteWindow:
         """付箋ウィンドウを作成"""
-        window = StickyNoteWindow(None, note)  # masterはNoneで独立ウィンドウ
+        window = StickyNoteWindow(self.main_window, note)  # メインウィンドウをmasterとして渡す
         
         # コールバックを設定
         window.on_save = self._on_note_saved
