@@ -9,7 +9,7 @@ from services.ui_service import UIService
 from utils.constants import (
     DEFAULT_MAIN_WIDTH, DEFAULT_MAIN_HEIGHT, MAIN_BG_COLOR, STATUS_FONT,
     STATUS_READY, TOOLBAR_PADDING, MSG_SELECT_NOTE_TO_OPEN, MSG_SELECT_NOTE_TO_DELETE,
-    MSG_SELECT_NOTE_FOR_COLOR
+    MSG_SELECT_NOTE_FOR_COLOR, STATUS_BAR_HEIGHT
 )
 
 
@@ -120,7 +120,8 @@ class MainWindow(tk.Tk):
         self.status_var = tk.StringVar()
         self.status_var.set(STATUS_READY)
         status_bar = tk.Label(self, textvariable=self.status_var, 
-                            font=STATUS_FONT, bd=1, relief=tk.SUNKEN, anchor=tk.W)
+                            font=STATUS_FONT, bd=1, relief=tk.SUNKEN, anchor=tk.W,
+                            height=STATUS_BAR_HEIGHT)  # 固定高さを設定
         status_bar.pack(side=tk.BOTTOM, fill=tk.X)
     
     def _setup_events(self) -> None:
