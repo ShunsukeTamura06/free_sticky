@@ -16,12 +16,14 @@ class StickyNoteApplication:
         self.storage_service = StorageService()
         self._setup_storage_callbacks()
         
-        # コントローラーの初期化
-        self.note_controller = NoteController(self.storage_service)
-        self._setup_controller_callbacks()
-        
         # ビューの初期化
         self.main_window = MainWindow()
+        
+        # コントローラーの初期化（メインウィンドウを渡す）
+        self.note_controller = NoteController(self.storage_service, self.main_window)
+        self._setup_controller_callbacks()
+        
+        # ビューのコールバック設定
         self._setup_view_callbacks()
         
         # 初期化完了
