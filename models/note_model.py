@@ -1,8 +1,11 @@
 """付箋データモデル"""
 from dataclasses import dataclass, asdict
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, TYPE_CHECKING
 from datetime import datetime
 from utils.constants import DEFAULT_NOTE_COLOR, ID_DATE_FORMAT
+
+if TYPE_CHECKING:
+    from services.language_service import LanguageService
 
 
 @dataclass
@@ -53,12 +56,22 @@ class NoteData:
                 return self.id
         return self.id
     
-    def get_preview_text(self, max_length: int = 80) -> str:
+    def get_preview_text(self, max_length: int = 80, language_service: Optional['LanguageService'] = None) -> str:
         """プレビュー用のテキストを取得"""
         text = self.text.strip().replace("\n", " ").replace("\r", " ")
         preview = (text[:max_length] + "...") if len(text) > max_length else text
-        return preview if preview else "(内容なし)"
+        
+        if not preview:
+            if language_service:
+                return language_service.translate("msg_empty_content")
+            else:
+                return "(内容なし)"
+        
+        return preview
     
-    def get_status_text(self) -> str:
+    def get_status_text(self, language_service: Optional['LanguageService'] = None) -> str:
         """状態テキストを取得"""
-        return "開いている" if self.is_open else "閉じている"
+        if language_service:
+            return language_service.translate("status_open") if self.is_open else language_service.translate("status_closed")
+        else:
+            return "開いている" if self.is_open else "閉じている"
