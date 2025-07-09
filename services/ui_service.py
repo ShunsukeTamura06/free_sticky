@@ -5,6 +5,7 @@ import tkinter as tk
 from tkinter import messagebox, colorchooser
 import random
 from typing import Optional, Tuple
+from services.language_service import get_language_service
 from utils.constants import (
     RANDOM_POSITION_MARGIN, 
     RANDOM_POSITION_OFFSET,
@@ -29,29 +30,43 @@ UI操作の共通サービスクラス
         return x, y
     
     @staticmethod
-    def show_info(message: str, title: str = "情報") -> None:
+    def show_info(message: str, title: str = None) -> None:
         """情報メッセージを表示"""
+        language_service = get_language_service()
+        if title is None:
+            title = language_service.translate("info")
         messagebox.showinfo(title, message)
     
     @staticmethod
-    def show_error(message: str, title: str = "エラー") -> None:
+    def show_error(message: str, title: str = None) -> None:
         """エラーメッセージを表示"""
+        language_service = get_language_service()
+        if title is None:
+            title = language_service.translate("error")
         messagebox.showerror(title, message)
     
     @staticmethod
     def confirm_delete() -> bool:
         """削除確認ダイアログを表示"""
-        return messagebox.askyesno("確認", MSG_CONFIRM_DELETE)
+        language_service = get_language_service()
+        title = language_service.translate("confirm")
+        message = language_service.translate("msg_confirm_delete")
+        return messagebox.askyesno(title, message)
     
     @staticmethod
     def show_select_note_message(action: str) -> None:
         """付箋選択メッセージを表示"""
-        messages = {
-            "open": MSG_SELECT_NOTE_TO_OPEN,
-            "delete": MSG_SELECT_NOTE_TO_DELETE,
-            "color": MSG_SELECT_NOTE_FOR_COLOR
+        language_service = get_language_service()
+        
+        message_keys = {
+            "open": "msg_select_note_to_open",
+            "delete": "msg_select_note_to_delete",
+            "color": "msg_select_note_for_color"
         }
-        UIService.show_info(messages.get(action, "付箋を選択してください。"))
+        
+        message_key = message_keys.get(action, "msg_select_note_to_open")
+        message = language_service.translate(message_key)
+        UIService.show_info(message)
     
     @staticmethod
     def choose_color(initial_color: str = "#FFFF99") -> Optional[str]:
