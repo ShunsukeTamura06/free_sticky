@@ -1,7 +1,7 @@
 """アプリケーション定数定義"""
 
 # ファイル名
-NOTES_FILE = "sticky_notes.json"
+NOTES_FILE = "free_sticky.json"
 
 # デフォルト値
 DEFAULT_NOTE_COLOR = "#FFFF99"

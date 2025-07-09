@@ -38,7 +38,7 @@ class MainWindow(tk.Tk):
         
         # アイコン設定（リソースがあれば）
         try:
-            self.iconbitmap("sticky_note_icon.ico")
+            self.iconbitmap("free_sticky.ico")
         except:
             pass
         
