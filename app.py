@@ -5,6 +5,7 @@ from services.storage_service import StorageService
 from controllers.note_controller import NoteController
 from views.main_window import MainWindow
 from services.ui_service import UIService
+from services.language_service import get_language_service
 from utils.constants import STATUS_NEW_FILE, STATUS_LOAD_FAILED
 
 
@@ -12,6 +13,9 @@ class StickyNoteApplication:
     """付箋アプリケーションのメインクラス"""
     
     def __init__(self):
+        # 言語サービス
+        self.language_service = get_language_service()
+        
         # サービス層の初期化
         self.storage_service = StorageService()
         self._setup_storage_callbacks()
@@ -56,7 +60,7 @@ class StickyNoteApplication:
     def _initialize_application(self) -> None:
         """アプリケーションを初期化"""
         if not self.storage_service.is_file_exists():
-            self._on_status_update(STATUS_NEW_FILE)
+            self._on_status_update(self.language_service.translate("status_new_file"))
         
         # コントローラーを初期化（保存されたデータを読み込み）
         self.note_controller.initialize()
@@ -70,7 +74,7 @@ class StickyNoteApplication:
     def _on_storage_error(self, message: str) -> None:
         """ストレージエラー時の処理"""
         UIService.show_error(message)
-        self.main_window.update_status(STATUS_LOAD_FAILED)
+        self.main_window.update_status(self.language_service.translate("status_load_failed"))
     
     def _on_storage_success(self, message: str) -> None:
         """ストレージ成功時の処理"""

@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import List, Optional, Callable
 from models.note_model import NoteData
+from services.language_service import get_language_service
 from utils.constants import (
     COLUMN_ID_WIDTH, COLUMN_DATE_WIDTH, COLUMN_PREVIEW_WIDTH, COLUMN_STATUS_WIDTH,
     TEXT_PREVIEW_MAX_LENGTH
@@ -14,6 +15,7 @@ class NoteListComponent:
     
     def __init__(self, parent: tk.Widget):
         self.parent = parent
+        self.language_service = get_language_service()
         self.search_var = tk.StringVar()
         self.all_notes: List[NoteData] = []
         self._create_widgets()
@@ -30,8 +32,8 @@ class NoteListComponent:
         search_frame = ttk.Frame(self.parent)
         search_frame.pack(fill=tk.X, padx=5, pady=2)
         
-        search_label = ttk.Label(search_frame, text="検索:")
-        search_label.pack(side=tk.LEFT, padx=2)
+        self.search_label = ttk.Label(search_frame, text=self.language_service.translate("search"))
+        self.search_label.pack(side=tk.LEFT, padx=2)
         
         search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
         search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
@@ -49,10 +51,10 @@ class NoteListComponent:
                               show="headings", selectmode="browse")
         
         # カラム設定
-        self.tree.heading("id", text="ID")
-        self.tree.heading("date", text="日時")
-        self.tree.heading("preview", text="内容")
-        self.tree.heading("status", text="状態")
+        self.tree.heading("id", text=self.language_service.translate("id"))
+        self.tree.heading("date", text=self.language_service.translate("date"))
+        self.tree.heading("preview", text=self.language_service.translate("content"))
+        self.tree.heading("status", text=self.language_service.translate("status"))
         
         self.tree.column("id", width=COLUMN_ID_WIDTH, minwidth=0, stretch=tk.NO)
         self.tree.column("date", width=COLUMN_DATE_WIDTH, anchor="w")
@@ -76,6 +78,19 @@ class NoteListComponent:
         self.tree.bind("<Double-1>", self._on_double_click)
         self.tree.bind("<<TreeviewSelect>>", self._on_selection_change)
         self.tree.bind("<Button-3>", self._on_right_click)
+    
+    def update_language(self) -> None:
+        """UI言語を更新"""
+        self.search_label.configure(text=self.language_service.translate("search"))
+        
+        # カラムヘッダーを更新
+        self.tree.heading("id", text=self.language_service.translate("id"))
+        self.tree.heading("date", text=self.language_service.translate("date"))
+        self.tree.heading("preview", text=self.language_service.translate("content"))
+        self.tree.heading("status", text=self.language_service.translate("status"))
+        
+        # リストを再表示して状態テキストを更新
+        self._filter_notes()
     
     def set_notes(self, notes: List[NoteData]) -> None:
         """付箋リストを設定"""
@@ -109,7 +124,7 @@ class NoteListComponent:
                 
                 date_display = note.get_formatted_date()
                 preview = note.get_preview_text(TEXT_PREVIEW_MAX_LENGTH)
-                status = note.get_status_text()
+                status = note.get_status_text(self.language_service)
                 
                 self.tree.insert("", "end", values=(note.id, date_display, preview, status))
     

@@ -3,6 +3,7 @@ from typing import Dict, List, Optional, Callable
 from models.note_model import NoteData
 from services.storage_service import StorageService
 from services.ui_service import UIService
+from services.language_service import get_language_service
 from views.note_window import StickyNoteWindow
 from utils.constants import (
     STATUS_CREATED, STATUS_EDITING, STATUS_DELETED, STATUS_COLOR_CHANGED,
@@ -18,6 +19,7 @@ class NoteController:
         self.main_window = main_window  # メインウィンドウの参照を保持
         self.open_windows: Dict[str, StickyNoteWindow] = {}
         self.all_notes: List[NoteData] = []
+        self.language_service = get_language_service()
         
         # コールバック
         self.on_notes_changed: Optional[Callable[[List[NoteData]], None]] = None
@@ -49,7 +51,7 @@ class NoteController:
         window.focus_text_area()
         
         if self.on_status_update:
-            self.on_status_update(STATUS_CREATED.format(note.id))
+            self.on_status_update(self.language_service.translate("status_created", note.id))
         
         if self.on_notes_changed:
             self.on_notes_changed(self.all_notes)
@@ -62,7 +64,7 @@ class NoteController:
             if window.winfo_exists():
                 window.focus_text_area()
                 if self.on_status_update:
-                    self.on_status_update(STATUS_EDITING.format(note_id))
+                    self.on_status_update(self.language_service.translate("status_editing", note_id))
                 return
         
         # 付箋データを検索
@@ -73,7 +75,7 @@ class NoteController:
             window.focus_text_area()
             self.storage_service.save_all_notes(self.all_notes)
         else:
-            UIService.show_error(MSG_ERROR_NOTE_DATA)
+            UIService.show_error(self.language_service.translate("msg_error_note_data"))
     
     def delete_note_by_id(self, note_id: str) -> bool:
         """指定したIDの付箋を削除"""
@@ -92,7 +94,7 @@ class NoteController:
         self.storage_service.save_all_notes(self.all_notes)
         
         if self.on_status_update:
-            self.on_status_update(STATUS_DELETED.format(note_id))
+            self.on_status_update(self.language_service.translate("status_deleted", note_id))
         
         if self.on_notes_changed:
             self.on_notes_changed(self.all_notes)
@@ -122,7 +124,7 @@ class NoteController:
         self.storage_service.save_all_notes(self.all_notes)
         
         if self.on_status_update:
-            self.on_status_update(STATUS_COLOR_CHANGED.format(note_id))
+            self.on_status_update(self.language_service.translate("status_color_changed", note_id))
         
         if self.on_notes_changed:
             self.on_notes_changed(self.all_notes)

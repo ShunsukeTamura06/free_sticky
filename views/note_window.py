@@ -4,6 +4,7 @@ from tkinter import messagebox
 from typing import Callable, Optional
 from models.note_model import NoteData
 from services.ui_service import UIService
+from services.language_service import get_language_service
 from utils.constants import (
     DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT,
     ALWAYS_ON_TOP, CONTROL_HEIGHT, RESIZE_HANDLE_SIZE, CONTROL_TEXT_COLOR,
@@ -18,6 +19,7 @@ class StickyNoteWindow(tk.Toplevel):
         super().__init__(master)
         self.master = master
         self.note_data = note_data
+        self.language_service = get_language_service()
         
         # コールバック
         self.on_save: Optional[Callable[[NoteData], None]] = None
@@ -79,9 +81,13 @@ class StickyNoteWindow(tk.Toplevel):
         self.text_area.pack(expand=True, fill=tk.BOTH, padx=5, pady=5)
         
         # コンテキストメニュー
+        self._create_context_menu()
+    
+    def _create_context_menu(self) -> None:
+        """コンテキストメニューを作成"""
         self.context_menu = tk.Menu(self, tearoff=0)
-        self.context_menu.add_command(label="色の変更", command=self._change_color)
-        self.context_menu.add_command(label="閉じる", command=self._on_close_clicked)
+        self.context_menu.add_command(label=self.language_service.translate("change_color"), command=self._change_color)
+        self.context_menu.add_command(label=self.language_service.translate("close"), command=self._on_close_clicked)
     
     def _setup_events(self) -> None:
         """イベントを設定"""
@@ -147,6 +153,9 @@ class StickyNoteWindow(tk.Toplevel):
     def _show_context_menu(self, event: Optional[tk.Event] = None) -> None:
         """コンテキストメニュー表示"""
         try:
+            # メニューを再作成して最新の翻訳を反映
+            self._create_context_menu()
+            
             if event:
                 self.context_menu.tk_popup(event.x_root, event.y_root)
             else:
